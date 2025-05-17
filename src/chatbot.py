@@ -1,0 +1,68 @@
+import random
+
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from peft import PeftModel
+import torch
+from data_processing import Messenger_data
+
+class MessengerChatbot:
+    def __init__(self, model_path, max_length=512):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
+        self.max_length = max_length
+
+
+    def generate_reply(self, prompt, temperature=0.7):
+        prompt_text =  "<|user|>\n" + prompt + "\n<|assistant|>"
+
+        inputs = self.tokenizer(prompt_text, return_tensors="pt").to(self.device)
+        input_ids = inputs["input_ids"]
+
+        with torch.no_grad():
+            output_ids = self.model.generate(
+                input_ids,
+                max_length=self.max_length,
+                temperature=temperature,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=self.tokenizer.eos_token_id,
+            )
+
+        generated = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        # Return only the generated part after <|assistant|>
+        return generated.split("<|assistant|>")[-1].strip()
+
+    def test_model(self, dataset_path, temperature=0.7):
+        dataset = Messenger_data(self.tokenizer, dataset_path=dataset_path)
+
+        random_numbers = random.sample(range(len(dataset)), 100)
+        for num in random_numbers:
+            item = dataset[num]
+            input_ids = item['input_ids']
+            sample = self.tokenizer.decode(input_ids, skip_special_tokens=True).split("<|assistant|>")
+
+            prompt_text = sample[0]
+            print(f"Prompt:\n{prompt_text}\n")
+
+            actual_response = sample[1]
+            print(f"Actual response:\n{actual_response}\n")
+
+
+            inputs = self.tokenizer(prompt_text, return_tensors="pt").to(self.device)
+            input_ids_tensor = inputs["input_ids"]
+
+            with torch.no_grad():
+                output_ids = self.model.generate(
+                    input_ids_tensor,
+                    max_length=self.max_length,
+                    temperature=temperature,
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                )
+
+            generated = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            print(f"AI Response:\n{generated.split("<|assistant|>")[-1].strip()}\n")
+            print("-------------------------------------------------------------")
