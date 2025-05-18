@@ -30,7 +30,7 @@ class Messenger_data(Dataset):
 
         user_name = ""
         # Get name of user to train
-        info_file = messages_folder+"/inbox/autofill_information.json"
+        info_file = messages_folder+"/autofill_information.json"
         if os.path.exists(info_file):
             with open(info_file, "r", encoding="utf8") as f:
                 info = json.load(f)
@@ -61,7 +61,7 @@ class Messenger_data(Dataset):
                             sender = msg["sender_name"]
                             content = msg["content"].replace("\n", "")
                             timestamp = datetime.fromtimestamp(msg["timestamp_ms"] / 1000)
-                            formatted_time = timestamp.strftime("%A %I:%M %p")
+                            formatted_time = timestamp.strftime("%A, %Y-%m-%d %I:%M %p")
 
                             if sender != user_name and got_response:
                                 # Create sample with context and replies
