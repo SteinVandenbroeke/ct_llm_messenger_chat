@@ -1,2 +1,6 @@
 ./datasets/
 ./models/
+./datasets/*
+src/__pycache__/
+datasets
+models

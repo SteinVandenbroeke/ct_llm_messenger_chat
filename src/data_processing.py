@@ -30,15 +30,16 @@ class Messenger_data(Dataset):
 
         user_name = ""
         # Get name of user to train
-        info_file = messages_folder+"/autofill_information.json"
+        info_file = messages_folder + "/autofill_information.json"
         if os.path.exists(info_file):
             with open(info_file, "r", encoding="utf8") as f:
                 info = json.load(f)
-                user_name = info["FULL_NAME"]
+                user_name = info["autofill_information_v2"]["FULL_NAME"][0]
         else:
             # Default to name
             user_name = "Niels Van den Broeck" # Change
 
+        print("User name:", user_name)
 
         for root, dirs, files in os.walk(messages_folder):
             # From old to new _9 -> _0
@@ -51,6 +52,10 @@ class Messenger_data(Dataset):
                         chat = json.load(f)
                         chat_name = chat.get("title", "Unknown chat")
                         messages = list(reversed(chat.get("messages", [])))  # Old to new
+                        participants = [item[ "name"] for item in chat.get("participants", [])]
+                        is_group = len(participants) > 2
+                        if len(participants) == 0:
+                            continue
 
                         got_response = False
                         context = []
@@ -67,22 +72,14 @@ class Messenger_data(Dataset):
                                 # Create sample with context and replies
 
                                 # Put context in correct format
-                                prompt_parts = []
+                                prompt = [{"role": "system", "content": f"You are a person called: {user_name}, You are chatting with: {participants}, " + (f"chat name: {chat_name}" if is_group else "")},]
                                 context = context[-self.context_window:]
-                                for m in context:
-                                    prompt_parts.append(f"[{m['time']}] [{m['sender']}] {m['content']}")
-                                prompt = "[Chat: "+ chat_name + "]\n"+"\n".join(prompt_parts)
+                                for m in context + responses:
+                                    prompt.append({"role": m['sender'] == user_name if "sender_name" in "assistant" else "user",
+                                                        "content": f"[{m['sender']}] {m['content']}"})
 
-                                reply_parts = []
-                                responses = responses[:self.context_window]
-                                for m in responses:
-                                    reply_parts.append(f"[{m['time']}] {m['content']}")
-                                reply = "\n".join(reply_parts)
+                                data[idx] = prompt
 
-                                data[idx] = {
-                                    "prompt": prompt,
-                                    "responses": reply
-                                }
                                 print(data[idx])
                                 idx += 1
 
@@ -102,6 +99,7 @@ class Messenger_data(Dataset):
                             else:
                                 got_response = True
                                 responses.append({
+                                    "sender": sender,
                                     "content": content,
                                     "time": formatted_time,
                                 })
@@ -109,12 +107,16 @@ class Messenger_data(Dataset):
 
 
     def __getitem__(self, idx):
-        entry = self.messages_data[idx]
+        messages = self.messages_data[idx]
 
-        full_text = f"<|user|>\n{entry['prompt']}\n<|assistant|>\n{entry['responses']}"
+        formated_prompt = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True,
+            max_length=self.max_length,
+            truncation=True,
+        )
 
         tokens = self.tokenizer(
-            full_text,
+            formated_prompt,
             truncation=True,
             padding="max_length",
             max_length=self.max_length,
@@ -122,11 +124,18 @@ class Messenger_data(Dataset):
         )
 
         # Just for checking
-        if self.tokenizer(full_text, return_tensors="pt")["input_ids"].size(1) > self.max_length:
+        if self.tokenizer(formated_prompt, return_tensors="pt")["input_ids"].size(1) > self.max_length:
             print(f"Truncation occurred at index {idx}")
 
         tokens["labels"] = tokens["input_ids"].clone()  # Causal LM training
         return {k: v.squeeze() for k, v in tokens.items()}
+
+        # Remove batch dimension: [1, seq_len] → [seq_len]
+        tokens = {k: v.squeeze(0) for k, v in tokens.items()}
+
+        tokens["labels"] = tokens["input_ids"].clone()  # Causal LM target
+        return tokens
+
 
     def __len__(self):
         return len(self.messages_data)

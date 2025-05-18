@@ -27,7 +27,7 @@ class Messenger_fine_tuner:
         model = AutoModelForCausalLM.from_pretrained(
             self.model_id,
             quantization_config=bnb_config,
-            device_map="auto"
+            device_map="auto",
         )
         model = prepare_model_for_kbit_training(model)
 
@@ -50,21 +50,22 @@ class Messenger_fine_tuner:
         training_args = TrainingArguments(
             output_dir=self.output_dir,
             num_train_epochs=0.1,
-            per_device_train_batch_size=4,
-            gradient_accumulation_steps=4,
+            per_device_train_batch_size=15,
+            gradient_accumulation_steps=1,
+            dataloader_num_workers=4,
             learning_rate=2e-4,
             fp16=True,
             logging_steps=10,
             save_strategy="epoch",
             save_total_limit=1,
-            report_to="none"
+            report_to="none",
         )
 
         trainer = Trainer(
             model=model,
             args=training_args,
             train_dataset=dataset,
-            tokenizer=self.tokenizer
+            tokenizer=self.tokenizer,
         )
 
 
