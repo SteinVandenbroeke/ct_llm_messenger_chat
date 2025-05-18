@@ -1,18 +1,21 @@
 from fine_tuning import Messenger_fine_tuner
 from chatbot import MessengerChatbot
+from src.data_processing import Messenger_data
+
 
 def main():
-    # tuner = Messenger_fine_tuner(
-    #     model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    #     dataset_path="../datasets/messages_Niels",
-    #     output_dir="../models/test",
-    # )
-    # tuner.train()
+    # Load model directly
 
+    tuner = Messenger_fine_tuner(
+        model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        dataset_path="../datasets/messages_Stein",
+        output_dir="../models/test",
+    )
+    tuner.train()
     tester = MessengerChatbot(model_path="../models/test")
 
     # 1. Test samples
-    #tester.test_model("../datasets/messages_Niels")
+    tester.test_model("../datasets/messages_Stein")
 
     # 2. Test custom prompt
     prompt = """
