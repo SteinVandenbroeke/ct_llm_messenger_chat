@@ -59,7 +59,6 @@ class Messenger_data(Dataset):
 
                         got_response = False
                         context = []
-                        responses = []
                         for msg in messages:
                             if "content" not in msg or "sender_name" not in msg:
                                 continue
@@ -74,9 +73,9 @@ class Messenger_data(Dataset):
                                 # Put context in correct format
                                 prompt = [{"role": "system", "content": f"You are a person called: {user_name}, You are chatting with: {participants}, " + (f"chat name: {chat_name}" if is_group else "")},]
                                 context = context[-self.context_window:]
-                                for m in context + responses:
-                                    prompt.append({"role": m['sender'] == user_name if "sender_name" in "assistant" else "user",
-                                                        "content": f"[{m['sender']}] {m['content']}"})
+                                for m in context:
+                                    prompt.append({"role": "assistant"  if m['sender'] == user_name else "user",
+                                                        "content": f"[{m['sender']}][{m['time']}] {m['content']}"})
 
                                 data[idx] = prompt
 
@@ -85,7 +84,6 @@ class Messenger_data(Dataset):
 
                                 # Reset everything for next sample
                                 context = []
-                                responses = []
                                 got_response = False
 
                             # Add to context as prompt
@@ -98,44 +96,75 @@ class Messenger_data(Dataset):
                             # Add to result
                             else:
                                 got_response = True
-                                responses.append({
+                                context.append({
                                     "sender": sender,
                                     "content": content,
                                     "time": formatted_time,
                                 })
         return data
 
-
     def __getitem__(self, idx):
-        messages = self.messages_data[idx]
+        messages = self.messages_data[idx]  # e.g. [{"role":"user","content":"Hello"}, ...]
+        assistant_messages = [message for message in messages if message["role"] == "assistant"]
 
-        formated_prompt = self.tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True,
+        tokens = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=False,
             max_length=self.max_length,
             truncation=True,
+            return_dict=True,
+            return_tensors="pt",
+            padding="max_length"
         )
 
-        tokens = self.tokenizer(
-            formated_prompt,
-            truncation=True,
-            padding="max_length",
+        #Labels are the items we want to generate -100 are masked values (we only want the assistant tokens in the labels tensor)
+        labels = torch.full_like(tokens["input_ids"], fill_value=-100)
+
+        for assistant_message in assistant_messages:
+            assistant_tokens = self.tokenizer(
+                assistant_message["content"],
+                max_length=self.max_length,
+                return_tensors="pt",
+                truncation=True,
+                padding=False,
+                add_special_tokens=False
+            )
+            full_input_ids = tokens["input_ids"][0]
+            assistant_input_ids = assistant_tokens["input_ids"][0][1:]
+            #Serach for assistant_input_ids in full_input_ids and set them to the assistant_input_ids values
+            for i in range(len(full_input_ids) - len(assistant_input_ids) + 1):
+                if torch.equal(full_input_ids[i:i + len(assistant_input_ids)], assistant_input_ids):
+                    labels[0, i:i + len(assistant_input_ids)] = full_input_ids[i:i + len(assistant_input_ids)]
+
+
+        # tokens is a dict of tensors with batch dim 1, so squeeze it
+        return {
+            "input_ids": tokens["input_ids"][0],
+            "attention_mask": tokens["attention_mask"][0],
+            "labels": labels[0]
+        }
+
+    def get_test_item(self, idx):
+        messages = self.messages_data[idx]  # e.g. [{"role":"user","content":"Hello"}, ...]
+        assistant_messages = [message for message in messages if message["role"] == "assistant"]
+
+        tokens = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=True,
             max_length=self.max_length,
-            return_tensors="pt"
+            truncation=True,
+            return_dict=True,
+            return_tensors="pt",
+            padding="max_length"
         )
 
-        # Just for checking
-        if self.tokenizer(formated_prompt, return_tensors="pt")["input_ids"].size(1) > self.max_length:
-            print(f"Truncation occurred at index {idx}")
-
-        tokens["labels"] = tokens["input_ids"].clone()  # Causal LM training
-        return {k: v.squeeze() for k, v in tokens.items()}
-
-        # Remove batch dimension: [1, seq_len] → [seq_len]
-        tokens = {k: v.squeeze(0) for k, v in tokens.items()}
-
-        tokens["labels"] = tokens["input_ids"].clone()  # Causal LM target
-        return tokens
-
+        return {
+            "input_ids": tokens["input_ids"][0],
+            "attention_mask": tokens["attention_mask"][0],
+            "labels": tokens[0]
+        }
 
     def __len__(self):
         return len(self.messages_data)

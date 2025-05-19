@@ -16,6 +16,8 @@ class Messenger_fine_tuner:
         self.output_dir = output_dir
         self.tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.dataset = Messenger_data(self.tokenizer, dataset_path=self.dataset_path, context_window=8)
+        print("Dataset Size: ", len(self.dataset))
 
     def prepare_model(self):
         bnb_config = BitsAndBytesConfig(
@@ -27,7 +29,7 @@ class Messenger_fine_tuner:
         model = AutoModelForCausalLM.from_pretrained(
             self.model_id,
             quantization_config=bnb_config,
-            device_map="auto",
+            device_map="auto"
         )
         model = prepare_model_for_kbit_training(model)
 
@@ -42,29 +44,26 @@ class Messenger_fine_tuner:
         print("Cuda available: ",torch.cuda.is_available())
         print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU")
 
-        dataset = Messenger_data(self.tokenizer, dataset_path=self.dataset_path)
-        print("Dataset Size: ", len(dataset))
-
         model = self.prepare_model()
 
         training_args = TrainingArguments(
             output_dir=self.output_dir,
-            num_train_epochs=0.1,
+            num_train_epochs=4,
             per_device_train_batch_size=15,
             gradient_accumulation_steps=1,
             dataloader_num_workers=4,
-            learning_rate=2e-4,
+            learning_rate=2e-4 * 15,
             fp16=True,
             logging_steps=10,
             save_strategy="epoch",
             save_total_limit=1,
-            report_to="none",
+            report_to="none"
         )
 
         trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=dataset,
+            train_dataset=self.dataset,
             tokenizer=self.tokenizer,
         )
 
