@@ -40,7 +40,7 @@ class Messenger_fine_tuner:
         print("model prepared")
         return get_peft_model(model, peft_config)
 
-    def train(self):
+    def train(self, epochs=0.1, batch_size=50, workers=16):
         print("Cuda available: ",torch.cuda.is_available())
         print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU")
 
@@ -48,10 +48,10 @@ class Messenger_fine_tuner:
 
         training_args = TrainingArguments(
             output_dir=self.output_dir,
-            num_train_epochs=4,
-            per_device_train_batch_size=2,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=batch_size,
             gradient_accumulation_steps=1,
-            dataloader_num_workers=4,
+            dataloader_num_workers=workers,
             learning_rate=2e-4 * 15,
             fp16=True,
             logging_steps=10,

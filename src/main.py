@@ -5,8 +5,9 @@ from transformers import pipeline
 
 from fine_tuning import Messenger_fine_tuner
 from chatbot import MessengerChatbot
-from src.data_processing import Messenger_data
 from transformers import AutoTokenizer, AutoModelForCausalLM
+import sys
+
 
 def main():
     # We use the tokenizer's chat template to format each message - see https://huggingface.co/docs/transformers/main/en/chat_templating
@@ -20,7 +21,8 @@ def main():
         dataset_path="../datasets/messages",
         output_dir="../models/test3",
     )
-    tuner.train()
+    print('argument list', sys.argv)
+    tuner.train(float(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3]))
 
     tester = MessengerChatbot(model_path="../models/test")
 
