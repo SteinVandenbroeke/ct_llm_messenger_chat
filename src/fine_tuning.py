@@ -48,8 +48,8 @@ class Messenger_fine_tuner:
 
         training_args = TrainingArguments(
             output_dir=self.output_dir,
-            num_train_epochs=4,
-            per_device_train_batch_size=2,
+            num_train_epochs=0.1,
+            per_device_train_batch_size=4,
             gradient_accumulation_steps=1,
             dataloader_num_workers=4,
             learning_rate=2e-4 * 15,
@@ -57,7 +57,7 @@ class Messenger_fine_tuner:
             logging_steps=10,
             save_strategy="epoch",
             save_total_limit=1,
-            report_to="none"
+            report_to="none",
         )
 
         trainer = Trainer(
