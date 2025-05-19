@@ -41,11 +41,12 @@ class MessengerChatbot:
 
         random_numbers = random.sample(range(len(dataset)), 100)
         for num in random_numbers:
-            item = dataset.get_test_item(num)
+            #item = dataset.get_test_item(num)
+            item = dataset[num]
             input_ids = item['input_ids']
-            sample = self.tokenizer.decode(input_ids, skip_special_tokens=True).split("<|assistant|>")
-            print("sample lenght", len(sample))
-            prompt_text = sample[0]
+            sample = self.tokenizer.decode(input_ids, skip_special_tokens=True)
+            print("sample length", len(sample))
+            prompt_text = sample
             print(f"Prompt:\n{prompt_text}\n")
             #
             # actual_response = sample[1]

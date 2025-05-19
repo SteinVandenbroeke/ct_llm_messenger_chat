@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 
 
 class Messenger_data(Dataset):
-    def __init__(self, tokenizer, dataset_path="../datasets/messages_Niels", save_path="../datasets/messages.pt", max_length=512, context_window = 8):
+    def __init__(self, tokenizer, dataset_path="../datasets/messages", save_path="../datasets/messages.pt", max_length=2048, context_window = 5):
         self.messages_data = {}
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -56,8 +56,9 @@ class Messenger_data(Dataset):
                         is_group = len(participants) > 2
                         if len(participants) == 0:
                             continue
+                        participants.remove(user_name)
+                        participants =  ", ".join(participants)
 
-                        got_response = False
                         context = []
                         for msg in messages:
                             if "content" not in msg or "sender_name" not in msg:
@@ -67,16 +68,20 @@ class Messenger_data(Dataset):
                             timestamp = datetime.fromtimestamp(msg["timestamp_ms"] / 1000)
                             formatted_time = timestamp.strftime("%A, %Y-%m-%d %I:%M %p")
 
-                            if sender != user_name and got_response:
-                                # Create sample with context and replies
 
+                            context.append({
+                                "sender": sender,
+                                "content": content,
+                                "time": formatted_time,
+                            })
+
+                            if msg["sender_name"] == user_name and len(context) >= self.context_window:
                                 # Put context in correct format
-                                prompt = [{"role": "system", "content": f"You are a person called: {user_name}, You are chatting with: {participants}, " + (f"chat name: {chat_name}" if is_group else "")},]
+                                prompt = [{"role": "system", "content": f"You are a person called: {user_name}. You are chatting with: {participants}. " + (f"Chat name: {chat_name}" if is_group else "")},]
                                 context = context[-self.context_window:]
                                 for m in context:
                                     prompt.append({"role": "assistant"  if m['sender'] == user_name else "user",
                                                         "content": f"[{m['sender']}][{m['time']}] {m['content']}"})
-
                                 data[idx] = prompt
 
                                 print(data[idx])
@@ -84,23 +89,7 @@ class Messenger_data(Dataset):
 
                                 # Reset everything for next sample
                                 context = []
-                                got_response = False
 
-                            # Add to context as prompt
-                            if sender != user_name and not got_response:
-                                context.append({
-                                    "sender": sender,
-                                    "content": content,
-                                    "time": formatted_time,
-                                })
-                            # Add to result
-                            else:
-                                got_response = True
-                                context.append({
-                                    "sender": sender,
-                                    "content": content,
-                                    "time": formatted_time,
-                                })
         return data
 
     def __getitem__(self, idx):
@@ -118,31 +107,35 @@ class Messenger_data(Dataset):
             padding="max_length"
         )
 
-        #Labels are the items we want to generate -100 are masked values (we only want the assistant tokens in the labels tensor)
-        labels = torch.full_like(tokens["input_ids"], fill_value=-100)
+        # Just for checking
+        if "overflowing_tokens" in tokens and tokens["overflowing_tokens"].size(1) > 0:
+            print("Truncation occurred.")
 
-        for assistant_message in assistant_messages:
-            assistant_tokens = self.tokenizer(
-                assistant_message["content"],
-                max_length=self.max_length,
-                return_tensors="pt",
-                truncation=True,
-                padding=False,
-                add_special_tokens=False
-            )
-            full_input_ids = tokens["input_ids"][0]
-            assistant_input_ids = assistant_tokens["input_ids"][0][1:]
-            #Serach for assistant_input_ids in full_input_ids and set them to the assistant_input_ids values
-            for i in range(len(full_input_ids) - len(assistant_input_ids) + 1):
-                if torch.equal(full_input_ids[i:i + len(assistant_input_ids)], assistant_input_ids):
-                    labels[0, i:i + len(assistant_input_ids)] = full_input_ids[i:i + len(assistant_input_ids)]
+        # #Labels are the items we want to generate -100 are masked values (we only want the assistant tokens in the labels tensor)
+        # labels = torch.full_like(tokens["input_ids"], fill_value=-100)
+        #
+        # for assistant_message in assistant_messages:
+        #     assistant_tokens = self.tokenizer(
+        #         assistant_message["content"],
+        #         max_length=self.max_length,
+        #         return_tensors="pt",
+        #         truncation=True,
+        #         padding=False,
+        #         add_special_tokens=False
+        #     )
+        #     full_input_ids = tokens["input_ids"][0]
+        #     assistant_input_ids = assistant_tokens["input_ids"][0][1:]
+        #     #Serach for assistant_input_ids in full_input_ids and set them to the assistant_input_ids values
+        #     for i in range(len(full_input_ids) - len(assistant_input_ids) + 1):
+        #         if torch.equal(full_input_ids[i:i + len(assistant_input_ids)], assistant_input_ids):
+        #             labels[0, i:i + len(assistant_input_ids)] = full_input_ids[i:i + len(assistant_input_ids)]
 
 
         # tokens is a dict of tensors with batch dim 1, so squeeze it
         return {
             "input_ids": tokens["input_ids"][0],
             "attention_mask": tokens["attention_mask"][0],
-            "labels": labels[0]
+            "labels":  tokens["input_ids"][0].clone()
         }
 
     def get_test_item(self, idx):
@@ -163,7 +156,7 @@ class Messenger_data(Dataset):
         return {
             "input_ids": tokens["input_ids"][0],
             "attention_mask": tokens["attention_mask"][0],
-            "labels": tokens[0]
+            "labels":  tokens["input_ids"][0].clone()
         }
 
     def __len__(self):

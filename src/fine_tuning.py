@@ -49,7 +49,7 @@ class Messenger_fine_tuner:
         training_args = TrainingArguments(
             output_dir=self.output_dir,
             num_train_epochs=4,
-            per_device_train_batch_size=15,
+            per_device_train_batch_size=2,
             gradient_accumulation_steps=1,
             dataloader_num_workers=4,
             learning_rate=2e-4 * 15,

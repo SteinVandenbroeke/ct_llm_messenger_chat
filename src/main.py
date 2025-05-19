@@ -15,13 +15,12 @@ def main():
 
     # Load model directly
     #
-    # tuner = Messenger_fine_tuner(
-    #     model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    #     dataset_path="../datasets/messages",
-    #     output_dir="../models/test",
-    # )
-    # tuner.train()
-    #
+    tuner = Messenger_fine_tuner(
+        model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        dataset_path="../datasets/messages",
+        output_dir="../models/test3",
+    )
+    tuner.train()
 
     tester = MessengerChatbot(model_path="../models/test")
 
