@@ -57,7 +57,7 @@ class Messenger_fine_tuner:
             logging_steps=10,
             save_strategy="epoch",
             save_total_limit=1,
-            report_to="none"
+            report_to="none",
         )
 
         trainer = Trainer(

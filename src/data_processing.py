@@ -56,7 +56,8 @@ class Messenger_data(Dataset):
                         is_group = len(participants) > 2
                         if len(participants) == 0:
                             continue
-                        participants.remove(user_name)
+                        if user_name in participants:
+                            participants.remove(user_name)
                         participants =  ", ".join(participants)
 
                         context = []
@@ -140,23 +141,29 @@ class Messenger_data(Dataset):
 
     def get_test_item(self, idx):
         messages = self.messages_data[idx]  # e.g. [{"role":"user","content":"Hello"}, ...]
-        assistant_messages = [message for message in messages if message["role"] == "assistant"]
+
+        start_index = 0
+        for i in reversed(range(len(messages))):
+            if messages[i]["role"] == "user":
+                start_index = i
+
+
 
         tokens = self.tokenizer.apply_chat_template(
-            messages,
+            messages[:start_index],
             tokenize=True,
             add_generation_prompt=True,
             max_length=self.max_length,
             truncation=True,
             return_dict=True,
             return_tensors="pt",
-            padding="max_length"
+            padding=False
         )
 
         return {
-            "input_ids": tokens["input_ids"][0],
-            "attention_mask": tokens["attention_mask"][0],
-            "labels":  tokens["input_ids"][0].clone()
+            "input_ids": tokens["input_ids"],
+            "attention_mask": tokens["attention_mask"],
+            "labels":  tokens["input_ids"].clone()
         }
 
     def __len__(self):

@@ -2,6 +2,7 @@
 ./models/
 ./datasets/*
 src/__pycache__/
+*.pyc
 datasets
 models
 .idea/
