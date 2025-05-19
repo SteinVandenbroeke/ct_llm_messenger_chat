@@ -30,24 +30,26 @@ class MessengerChatbot:
                 eos_token_id=self.tokenizer.eos_token_id,
             )
 
-        generated = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+
+        generated = self.tokenizer.decode(output_ids[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True)
         # Return only the generated part after <|assistant|>
-        return generated.split("<|assistant|>")[-1].strip()
+        return generated
 
     def test_model(self, dataset_path, temperature=0.7):
         dataset = Messenger_data(self.tokenizer, dataset_path=dataset_path)
 
         random_numbers = random.sample(range(len(dataset)), 100)
         for num in random_numbers:
-            item = dataset[num]
+            item = dataset.get_test_item(num)
             input_ids = item['input_ids']
             sample = self.tokenizer.decode(input_ids, skip_special_tokens=True).split("<|assistant|>")
-
+            print("sample lenght", len(sample))
             prompt_text = sample[0]
             print(f"Prompt:\n{prompt_text}\n")
-
-            actual_response = sample[1]
-            print(f"Actual response:\n{actual_response}\n")
+            #
+            # actual_response = sample[1]
+            # print(f"Actual response:\n{actual_response}\n")
 
 
             inputs = self.tokenizer(prompt_text, return_tensors="pt").to(self.device)
@@ -55,14 +57,15 @@ class MessengerChatbot:
 
             with torch.no_grad():
                 output_ids = self.model.generate(
-                    input_ids_tensor,
+                    inputs["input_ids"],
                     max_length=self.max_length,
+                    attention_mask=inputs["attention_mask"],
                     temperature=temperature,
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id,
                     eos_token_id=self.tokenizer.eos_token_id,
                 )
 
-            generated = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            print(f"AI Response:\n{generated.split("<|assistant|>")[-1].strip()}\n")
+            generated = self.tokenizer.decode(output_ids[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True)
+            print(f"AI Response:\n{generated}\n")
             print("-------------------------------------------------------------")
