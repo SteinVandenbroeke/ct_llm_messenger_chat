@@ -95,7 +95,6 @@ class Messenger_data(Dataset):
 
     def __getitem__(self, idx):
         messages = self.messages_data[idx]  # e.g. [{"role":"user","content":"Hello"}, ...]
-        assistant_messages = [message for message in messages if message["role"] == "assistant"]
 
         tokens = self.tokenizer.apply_chat_template(
             messages,
@@ -112,6 +111,7 @@ class Messenger_data(Dataset):
         if "overflowing_tokens" in tokens and tokens["overflowing_tokens"].size(1) > 0:
             print("Truncation occurred.")
 
+        # assistant_messages = [message for message in messages if message["role"] == "assistant"]
         # #Labels are the items we want to generate -100 are masked values (we only want the assistant tokens in the labels tensor)
         # labels = torch.full_like(tokens["input_ids"], fill_value=-100)
         #
