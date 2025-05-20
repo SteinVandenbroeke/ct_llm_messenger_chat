@@ -4,9 +4,10 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 import torch
 from data_processing import Messenger_data
+import string
 
 class MessengerChatbot:
-    def __init__(self, model_path, max_length=2048):
+    def __init__(self, model_path, max_length=3000):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -36,6 +37,11 @@ class MessengerChatbot:
         # Return only the generated part after <|assistant|>
         return generated
 
+
+    def keep_alphanum_punct_space(self,s):
+        allowed = string.ascii_letters + string.digits + string.punctuation + ' ' + ' \n'
+        return ''.join(c for c in s if c in allowed)
+
     def test_model(self, dataset_path, temperature=0.7):
         dataset = Messenger_data(self.tokenizer, dataset_path=dataset_path)
 
@@ -46,7 +52,7 @@ class MessengerChatbot:
             input_ids = item['input_ids']
             sample = self.tokenizer.decode(input_ids, skip_special_tokens=True)
             print("-- Actual --")
-            print(sample)
+            print(self.keep_alphanum_punct_space(sample))
             print("------------")
             #
             # actual_response = sample[1]
@@ -65,5 +71,6 @@ class MessengerChatbot:
                 )
 
             generated = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            print(f"AI Response:\n{generated}\n")
+            print(f"AI Response:\n{self.keep_alphanum_punct_space(generated)}\n")
             print("-------------------------------------------------------------")
+            input()

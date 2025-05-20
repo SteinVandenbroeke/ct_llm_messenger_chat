@@ -6,7 +6,7 @@ from transformers import (
     BitsAndBytesConfig
 )
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-
+import logging
 from data_processing import Messenger_data
 
 class Messenger_fine_tuner:
@@ -16,7 +16,7 @@ class Messenger_fine_tuner:
         self.output_dir = output_dir
         self.tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.dataset = Messenger_data(self.tokenizer, dataset_path=self.dataset_path, context_window=8)
+        self.dataset = Messenger_data(self.tokenizer, dataset_path=self.dataset_path, save_path=self.output_dir + "_messages.pt")
         print("Dataset Size: ", len(self.dataset))
 
     def prepare_model(self):
@@ -41,6 +41,13 @@ class Messenger_fine_tuner:
         return get_peft_model(model, peft_config)
 
     def train(self, epochs=0.1, batch_size=50, workers=16):
+        logging.basicConfig(
+            filename="training.log",  # Change this to your desired log file name
+            filemode="w",             # "w" to overwrite each time, "a" to append
+            format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+            level=logging.INFO
+        )
         print("Cuda available: ",torch.cuda.is_available())
         print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU")
 
@@ -52,12 +59,13 @@ class Messenger_fine_tuner:
             per_device_train_batch_size=batch_size,
             gradient_accumulation_steps=1,
             dataloader_num_workers=workers,
-            learning_rate=2e-4 * 15,
+            learning_rate=2e-7,
             fp16=True,
             logging_steps=10,
-            save_strategy="epoch",
-            save_total_limit=1,
-            report_to="none",
+            save_strategy="steps",
+            logging_dir="./logs",
+            report_to=["tensorboard"],
+            save_steps=100
         )
 
         trainer = Trainer(

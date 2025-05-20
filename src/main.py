@@ -21,15 +21,27 @@ def main():
     # )
     # tuner.train()
     #
+    #tuner = Messenger_fine_tuner(
+    #    model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    #    dataset_path="../datasets/messages",
+    #    output_dir="../models/test5",
+    #)
+
+
     tuner = Messenger_fine_tuner(
-        model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        dataset_path="../datasets/messages",
-        output_dir="../models/test5",
+         model_id="Qwen/Qwen3-0.6B",
+         dataset_path="../datasets/messages",
+         output_dir="../models/test_the_final",
+
     )
+
+    for i in range(len(tuner.dataset)):
+        tuner.dataset[i]
+        
     print('argument list', sys.argv)
     tuner.train(float(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3]))
 
-    tester = MessengerChatbot(model_path="../models/test5")
+    tester = MessengerChatbot(model_path="../models/test_the_final")
 
     # 1. Test samples
     tester.test_model("../datasets/messages")
@@ -39,9 +51,9 @@ def main():
 [Chat: Stein Vandenbroeke]
 [Saturday 03:28 PM] [Stein Vandenbroeke] Hoelaat campus?
 """
-    response = tester.generate_reply(prompt)
-    print(f"Prompt: \n{prompt}")
-    print(f"Model Reply: \n{response}")
+    #response = tester.generate_reply(prompt)
+    #print(f"Prompt: \n{prompt}")
+    #print(f"Model Reply: \n{response}")
 
 
 

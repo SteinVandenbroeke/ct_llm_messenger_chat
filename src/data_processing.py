@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 
 
 class Messenger_data(Dataset):
-    def __init__(self, tokenizer, dataset_path="../datasets/messages", save_path="../datasets/messages.pt", max_length=2048, context_window = 5):
+    def __init__(self, tokenizer, dataset_path="../datasets/messages", save_path="../datasets/messages.pt", max_length=5000, context_window = 15):
         self.messages_data = {}
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -78,14 +78,13 @@ class Messenger_data(Dataset):
 
                             if msg["sender_name"] == user_name and len(context) >= self.context_window:
                                 # Put context in correct format
-                                prompt = [{"role": "system", "content": f"You are a person called: {user_name}. You are chatting with: {participants}. " + (f"Chat name: {chat_name}" if is_group else "")},]
+                                prompt = [{"role": "system", "content": f"You are a person called: {user_name}. You are chatting with: {participants}. " + (f"Chat name: {chat_name}." if is_group else "") + f" Its importand to answer in the chat format '[sender][time] message' where sender is always {user_name}, because you rollplaying this person."}]
                                 context = context[-self.context_window:]
                                 for m in context:
                                     prompt.append({"role": "assistant"  if m['sender'] == user_name else "user",
                                                         "content": f"[{m['sender']}][{m['time']}] {m['content']}"})
                                 data[idx] = prompt
 
-                                print(data[idx])
                                 idx += 1
 
                                 # Reset everything for next sample
