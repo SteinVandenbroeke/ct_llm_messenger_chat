@@ -8,6 +8,11 @@ import string
 
 class MessengerChatbot:
     def __init__(self, model_path, max_length=3000):
+        """
+        Init function for MessengerChatbot Class
+        :param model_path:
+        :param max_length:
+        """
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -16,9 +21,14 @@ class MessengerChatbot:
 
 
     def generate_reply(self, prompt, temperature=0.2):
-        prompt_text =  "<|user|>\n" + prompt + "\n<|assistant|>"
+        """
+        generates tokens of a given prompt
+        :param prompt: prompt in following format: [{"role": "user", "content": "Hello"}, ...]
+        :param temperature: randomness
+        :return: tokens of the prompt
+        """
 
-        inputs = self.tokenizer(prompt_text, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer.apply_chat_template(prompt, return_tensors="pt").to(self.device)
         input_ids = inputs["input_ids"].to(self.device)
 
         with torch.no_grad():
@@ -38,13 +48,17 @@ class MessengerChatbot:
         return generated
 
 
-    def keep_alphanum_punct_space(self,s):
-        allowed = string.ascii_letters + string.digits + string.punctuation + ' ' + ' \n'
-        return ''.join(c for c in s if c in allowed)
+
 
     def test_model(self, dataset_path, temperature=0.7):
+        """
+        takes 100 random samples. cuts the response and passes it to the model to check the result.
+        :param dataset_path: path of the dataset
+        :param temperature: randomness
+        """
         dataset = Messenger_data(self.tokenizer, dataset_path=dataset_path)
 
+        # 100 random samples
         random_numbers = random.sample(range(len(dataset)), 100)
         for num in random_numbers:
             #item = dataset.get_test_item(num)
@@ -52,14 +66,12 @@ class MessengerChatbot:
             input_ids = item['input_ids']
             sample = self.tokenizer.decode(input_ids, skip_special_tokens=True)
             print("-- Actual --")
-            print(self.keep_alphanum_punct_space(sample))
+            print(sample)
             print("------------")
-            #
-            # actual_response = sample[1]
-            # print(f"Actual response:\n{actual_response}\n")
             inputs = dataset.get_test_item(num)["input_ids"].to(self.device)
 
             print(len(inputs))
+            # Generates response
             with torch.no_grad():
                 output_ids = self.model.generate(
                     inputs,
@@ -71,6 +83,6 @@ class MessengerChatbot:
                 )
 
             generated = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-            print(f"AI Response:\n{self.keep_alphanum_punct_space(generated)}\n")
+            print(f"AI Response:\n{generated}\n")
             print("-------------------------------------------------------------")
             input()

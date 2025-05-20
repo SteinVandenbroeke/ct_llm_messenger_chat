@@ -1,5 +1,4 @@
 import torch
-from torch.utils.data import Dataset
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM,
     TrainingArguments, Trainer,
@@ -11,6 +10,12 @@ from data_processing import Messenger_data
 
 class Messenger_fine_tuner:
     def __init__(self, model_id, dataset_path, output_dir):
+        """
+        Init function for Messenger_fine_tuner class
+        :param model_id: name of the model being trained
+        :param dataset_path: path to the dataset
+        :param output_dir: directory to save the trained model
+        """
         self.model_id = model_id
         self.dataset_path = dataset_path
         self.output_dir = output_dir
@@ -20,12 +25,19 @@ class Messenger_fine_tuner:
         print("Dataset Size: ", len(self.dataset))
 
     def prepare_model(self):
+        """
+        Model setup
+        :return: model
+        """
+        # config for using smaller datatypes
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_compute_dtype=torch.bfloat16,
             bnb_4bit_quant_type="nf4"
         )
+
+        # uses AutoModelForCausalLM for model
         model = AutoModelForCausalLM.from_pretrained(
             self.model_id,
             quantization_config=bnb_config,
@@ -41,8 +53,14 @@ class Messenger_fine_tuner:
         return get_peft_model(model, peft_config)
 
     def train(self, epochs=0.1, batch_size=50, workers=16):
+        """
+        Trains the model
+        :param epochs: number of epochs
+        :param batch_size: size of the batch
+        :param workers: amount of workers
+        """
         logging.basicConfig(
-            filename="training.log",  # Change this to your desired log file name
+            filename="training.log",
             filemode="w",             # "w" to overwrite each time, "a" to append
             format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",

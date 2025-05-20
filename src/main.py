@@ -1,11 +1,5 @@
-import os
-
-import torch
-from transformers import pipeline
-
 from fine_tuning import Messenger_fine_tuner
 from chatbot import MessengerChatbot
-from transformers import AutoTokenizer, AutoModelForCausalLM
 import sys
 
 
@@ -13,30 +7,11 @@ def main():
     # We use the tokenizer's chat template to format each message - see https://huggingface.co/docs/transformers/main/en/chat_templating
 
     # Load model directly
-    # #
-    # tuner = Messenger_fine_tuner(
-    #     model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    #     dataset_path="../datasets/messages",
-    #     output_dir="../models/test4",
-    # )
-    # tuner.train()
-    #
-    #tuner = Messenger_fine_tuner(
-    #    model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    #    dataset_path="../datasets/messages",
-    #    output_dir="../models/test5",
-    #)
-
-
     tuner = Messenger_fine_tuner(
-         model_id="Qwen/Qwen3-0.6B",
-         dataset_path="../datasets/messages",
-         output_dir="../models/test_the_final",
-
+        model_id="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        dataset_path="../datasets/messages",
+        output_dir="../models/test4",
     )
-
-    for i in range(len(tuner.dataset)):
-        tuner.dataset[i]
         
     print('argument list', sys.argv)
     tuner.train(float(sys.argv[1]),int(sys.argv[2]),int(sys.argv[3]))
